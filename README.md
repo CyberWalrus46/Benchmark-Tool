@@ -1,153 +1,52 @@
-# WeatherReport
+# WukongBench
 
-Консольное приложение на C# (.NET 10). Загружает список городов, получает текущую погоду через [wttr.in](https://wttr.in), выводит температуру по каждому городу и статистику по странам.
-
-Внешние пакеты не используются, только `System.Text.Json` и стандартная библиотека .NET.
-
-## Что делает приложение
-
-1. Загружает список городов по URL и убирает дубликаты (без учёта регистра).
-2. Для каждого города запрашивает `https://wttr.in/{city}?format=j1` (запросы выполняются параллельно).
-3. Из ответа берёт текущую температуру (`current_condition[0].temp_C`) и страну (`nearest_area[0].country[0].value`).
-4. Выводит данные по каждому городу.
-5. Группирует города по странам и выводит количество городов, среднюю, минимальную и максимальную температуру.
-
-Пример вывода:
-
-```
-Vienna, Austria +13 °C
-Izhevsk, Russia +4 °C
-Moscow, Russia +9 °C
-
-Austria — 1 cities, avg: +13 °C, min: +13 °C, max: +13 °C
-Russia — 2 cities, avg: +7 °C, min: +4 °C, max: +9 °C
-```
-
-Если данные по городу получить не удалось, он пропускается, а причина выводится в stderr. Если температура неизвестна, выводится `unspecified`.
+Консольная программа на C# для автоматического запуска Black Myth: Wukong Benchmark Tool из Steam: CPU-тест и GPU-тест, сбор результатов.
 
 ## Требования
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Доступ в интернет к адресам списка городов и wttr.in
-
-## Структура проекта
-
-```
-WeatherReport/
-├── .gitignore
-├── README.md
-└── src/WeatherReport/
-    ├── WeatherReport.csproj
-    ├── Program.cs                      # точка входа, вывод результата
-    ├── Constants.cs                    # ключи настроек и общие константы
-    ├── Types.cs                        # WeatherData, CountryStatistics
-    ├── appsettings.json                # настройки для Debug
-    ├── .env.example                    # шаблон настроек для Release
-    ├── Configuration/
-    │   └── AppConfiguration.cs         # чтение настроек
-    └── Services/
-        ├── CityListClient.cs           # загрузка списка городов
-        └── WeatherClient.cs            # запрос погоды
-```
-
-## Настройка
-
-Адреса и таймаут не хранятся в коде. Источник настроек зависит от конфигурации сборки.
-
-### Debug: `appsettings.json`
-
-Файл лежит в `src/WeatherReport/` и копируется в папку сборки:
-
-```json
-{
-  "CityListUrl": "https://gistpad.com/raw/vk-task-14",
-  "WeatherUrlTemplate": "https://wttr.in/{0}?format=j1",
-  "HttpClientTimeoutS": "30"
-}
-```
-
-`{0}` в шаблоне заменяется на название города.
-
-### Release: переменные окружения или `.env`
-
-| Переменная              | Описание                                      |
-|-------------------------|-----------------------------------------------|
-| `CITY_LIST_URL`         | Адрес файла со списком городов                |
-| `WEATHER_URL_TEMPLATE`  | Шаблон адреса API погоды, `{0}` — город       |
-| `HTTP_CLIENT_TIMEOUT_S` | Таймаут HTTP-запросов в секундах              |
-
-Если рядом с исполняемым файлом лежит `.env`, значения читаются из него. Настоящие переменные окружения приоритетнее значений из файла. Файл `.env` в репозиторий не попадает (см. `.gitignore`).
-
-1. Скопируйте шаблон и заполните значения:
-
-   ```bash
-   cp src/WeatherReport/.env.example src/WeatherReport/.env
-   ```
-
-   Содержимое `.env`:
-
-   ```
-   CITY_LIST_URL=https://gistpad.com/raw/vk-task-14
-   WEATHER_URL_TEMPLATE=https://wttr.in/{0}?format=j1
-   HTTP_CLIENT_TIMEOUT_S=30
-   ```
-
-2. Копирование в папку сборки уже настроено в `WeatherReport.csproj`: `appsettings.json` копируется только в Debug, `.env` только в Release.
-
-   ```xml
-   <Project Sdk="Microsoft.NET.Sdk">
-
-     <PropertyGroup>
-       <OutputType>Exe</OutputType>
-       <TargetFramework>net10.0</TargetFramework>
-       <ImplicitUsings>enable</ImplicitUsings>
-       <Nullable>enable</Nullable>
-     </PropertyGroup>
-
-     <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-       <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
-     </ItemGroup>
-     <ItemGroup Condition="'$(Configuration)' == 'Release'">
-       <None Update=".env" CopyToOutputDirectory="PreserveNewest" />
-     </ItemGroup>
-
-   </Project>
-   ```
-
-   Файл `.env` должен лежать в папке проекта рядом с `.csproj`, иначе при сборке он не будет найден.
+- Windows 10/11, Steam
+- .NET 10 SDK
+- Установленный Black Myth: Wukong Benchmark Tool
+- Языковой пакет Windows с OCR
 
 ## Запуск
 
-```bash
-# Debug (настройки из appsettings.json)
-dotnet run --project src
-
-# Release (настройки из .env или переменных окружения)
-dotnet run --project src -c Release
+```
+dotnet run -- --start-key enter
 ```
 
-Запуск без `.env` с переменными окружения:
+Или из папки сборки: `Benchmark.exe --start-key enter`.
 
-```bash
-export CITY_LIST_URL="https://gistpad.com/raw/vk-task-14"
-export WEATHER_URL_TEMPLATE="https://wttr.in/{0}?format=j1"
-export HTTP_CLIENT_TIMEOUT_S="30"
-dotnet run --project src -c Release
-```
+Параметры:
 
-## Формат списка городов
+| Параметр | По умолчанию | Описание |
+|---|---|---|
+| `--dir` | через Steam | Папка Benchmark Tool |
+| `--start-key` | не задано | Клавиша старта теста (`enter`, `space`, буква) |
+| `--startup-delay` | 30 | Секунд ожидания меню после запуска |
+| `--timeout` | 15 | Минут на один проход |
+| `--gpu-scale` | 100 или 50 | Масштаб рендера GPU-теста, % |
+| `--rt` | выкл. | Трассировка лучей в GPU-тесте |
+| `--appid` | из манифеста | Номер приложения Steam |
 
-Один город на строку, например:
+## Что делает программа
 
-```
-Moscow
-Khabarovsk
-Vienna
-```
+1. Находит папку установки, exe и `GameUserSettings.ini`.
+2. Сохраняет копию ini (`.bak` рядом и в памяти).
+3. Применяет профиль CPU (малый масштаб рендера, минимум качества), запускает бенчмарк через Steam, нажимает клавишу старта, распознаёт экран результатов через Windows OCR, сохраняет скриншот.
+4. То же для GPU-профиля. Масштаб снижается, если видеопамяти меньше 6 ГБ.
+5. Возвращает исходный ini, пишет `report.txt` с характеристиками ПК, метриками и настройками.
 
-Пустые строки и дубликаты игнорируются.
+Выходные файлы: `report.txt`, `result_cpu.png`, `result_gpu.png`, при сбое `timeout_*.png`.
 
-## Обработка ошибок
+## Известные ограничения
 
-- Ошибка по отдельному городу (таймаут, неожиданный ответ API): город пропускается, сообщение выводится в stderr, остальные обрабатываются.
-- Ошибка загрузки списка городов или отсутствие обязательной настройки: сообщение в stderr, приложение завершается.
+- Программа не всегда закрывает бенчмарк после GPU-прохода. Закрывайте вручную и проверяйте, что ini восстановлен.
+- При нехватке видеопамяти GPU-тест может вылетать. Уменьшите `--gpu-scale`.
+- Меню должно появиться за время `--startup-delay`, иначе нажатие клавиши пропадёт.
+- Не трогайте мышь и клавиатуру во время работы.
+- Программа не проверялась на реальной системе, возможны ошибки компиляции и поведения.
+
+## Восстановление ini вручную
+
+Если программа прервалась, верните исходный файл из `GameUserSettings.ini.bak` рядом с ini или из своей копии.
